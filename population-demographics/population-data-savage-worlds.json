@@ -1,0 +1,31 @@
+{
+  "common": {
+    "dwarf": 1,
+    "elf": 1,
+    "gnome": 1,
+    "halfling": 1,
+    "half-elf": 1,
+    "half-orc": 1,
+    "human": 1
+  },
+  "uncommon": {
+    "orc": 1,
+    "reptilian humanoids": 1,
+    "beastfolk": 1,
+    "elemental beings": 1,
+    "undead": 1,
+    "changelings": 1,
+    "planar beings": 1,
+    "android": 1,
+    "mutant": 1,
+    "savaged humans (various settings)": 1
+  },
+  "rare": {
+    "insectoid races": 1,
+    "plantient races": 1,
+    "energy beings": 1,
+    "dimensional entities": 1,
+    "eldritch beings": 1,
+    "unique setting specific races": 1
+  }
+}
