@@ -1,5 +1,5 @@
 {
-  "common": {
+  "Common": {
     "human": 1,
     "twi'lek": 1,
     "wookiee": 1,
@@ -11,7 +11,7 @@
     "gran": 1,
     "gand": 1
   },
-  "uncommon": {
+  "Uncommon": {
     "abednedo": 1,
     "aqualish": 1,
     "barabel": 1,
@@ -32,7 +32,7 @@
     "nautolan": 1,
     "zabrak": 1
   },
-  "rare": {
+  "Rare": {
     "aleena": 1,
     "amani": 1,
     "b'omarr monks": 1,

@@ -2,8 +2,36 @@ import sys
 import json
 import numpy as np
 from scipy.stats import skewnorm
-from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QLabel, QTextEdit, QDoubleSpinBox, QTableWidget, QTableWidgetItem, QHBoxLayout, QHeaderView, QFileDialog
+from PySide6.QtCore import Signal, QAbstractTableModel
+from PySide6.QtWidgets import QApplication, QCheckBox, QWidget, QVBoxLayout, QPushButton, QLabel, QTextEdit, QDoubleSpinBox, QTableWidget, QTableWidgetItem, QHBoxLayout, QHeaderView, QFileDialog
+
+class AncestryChanceWidget(QWidget):
+  value_changed = Signal(float)
+
+  def __init__(self, rarity_labels, default_value=1.0, parent=None):
+    super().__init__(parent)
+    self.layout = QHBoxLayout()
+    self.setLayout(self.layout)
+
+    self.label = QLabel(rarity_labels +' chance')
+    self.spin = QDoubleSpinBox()
+    self.spin.setRange(0.0, 0.99)
+    self.spin.setSingleStep(0.01)
+    self.spin.setDecimals(2)
+    self.spin.setValue(default_value)
+    self.spin.valueChanged.connect(self.value_changed)
+
+    self.layout.addWidget(self.label)
+    self.layout.addWidget(self.spin)
+
+  def emit_value_changed(self):
+    self.value_changed.emit(self.value())
+
+  def value(self):
+    return self.spin.value()
+
+  def setValue(self, value):
+    self.spin.setValue(value)
 
 class AncestryTableWidget(QWidget):
   data_changed = Signal(list)
@@ -11,7 +39,7 @@ class AncestryTableWidget(QWidget):
   def __init__(self, header_labels, data=None, parent=None):
     super().__init__(parent)
     self.header_labels = header_labels
-    self.data = data or []
+    self._data = data or []
 
     self.init_ui()
     self.populate_table()
@@ -39,8 +67,8 @@ class AncestryTableWidget(QWidget):
     self.setLayout(self.layout)
 
   def populate_table(self):
-    self.table.setRowCount(len(self.data))
-    for row_index, row_data in enumerate(self.data):
+    self.table.setRowCount(len(self._data))
+    for row_index, row_data in enumerate(self._data):
       for col_index, value in enumerate(row_data):
         item = QTableWidgetItem(str(value))
         self.table.setItem(row_index, col_index, item)
@@ -48,33 +76,24 @@ class AncestryTableWidget(QWidget):
   def add_row(self):
     row_count = self.table.rowCount()
     self.table.insertRow(row_count)
-    self.data.append(["" for _ in  self.header_labels])
-    self.data_changed.emit(self.data)
+    self._data.append(["", 1])
+    #self.populate_table()
+    for col in range(len(self.header_labels)):
+      item = QTableWidgetItem(str(self._data[-1][col]))
+      self.table.setItem(row_count, col, item)
 
   def remove_row(self):
     selected_rows = self.table.selectedItems()
     if selected_rows:
       row_to_remove = selected_rows[0].row()
       self.table.removeRow(row_to_remove)
-      del self.data[row_to_remove]
-      self.data_changed.emit(self.data)
-
-  def get_data(self):
-    table_data = []
-    for row_index in range(self.table.rowCount()):
-      row_data = []
-      for col_index in range(self.table.columnCount()):
-        item = self.table.item(row_index, col_index)
-        value = item.text() if item else ""
-        row_data.append(value)
-      table_data.append(row_data)
-    self.data = table_data
-    return self.data
+      del self._data[row_to_remove]
+      self.data_changed.emit(self._data)
 
   def set_data(self, new_data):
-    self.data = new_data
+    self._data = new_data
     self.populate_table()
-    self.data_changed.emit(self.data)
+    self.data_changed.emit(self._data)
 
 class PopulationDemographicsApp(QWidget):
     def __init__(self):
@@ -82,10 +101,23 @@ class PopulationDemographicsApp(QWidget):
         self.initUI()
 
     def initUI(self):
+        self.default_data()
         layout = QVBoxLayout()
 
+        top_layout = QHBoxLayout()
         self.label = QLabel("Population Demographics Generator")
-        layout.addWidget(self.label)
+        top_layout.addWidget(self.label)
+        self.vastMajority = QCheckBox("Vast Majority?")
+        top_layout.addWidget(self.vastMajority)
+        self.ndecimalslabel = QLabel('Number of Decimals')
+        self.ndecimals = QDoubleSpinBox()
+        self.ndecimals.setRange(0, 4)
+        self.ndecimals.setSingleStep(1)
+        self.ndecimals.setDecimals(0)
+        self.ndecimals.setValue(0)
+        top_layout.addWidget(self.ndecimalslabel)
+        top_layout.addWidget(self.ndecimals)
+        layout.addLayout(top_layout)
 
         layoutLoadSave = QHBoxLayout()
 
@@ -99,41 +131,26 @@ class PopulationDemographicsApp(QWidget):
 
         layout.addLayout(layoutLoadSave)
 
-        self.uncommonChanceLabel = QLabel("Uncommon Chance:")
-        self.uncommonChanceSpin = QDoubleSpinBox()
-        self.uncommonChanceSpin.setRange(0, 1)
-        self.uncommonChanceSpin.setSingleStep(0.01)
-        self.uncommonChanceSpin.setValue(0.25)
-        layout.addWidget(self.uncommonChanceLabel)
-        layout.addWidget(self.uncommonChanceSpin)
+        # create the chance widgets
+        chance_layout = QHBoxLayout()
+        chance_values = [0.75,0.25,0.05]
+        for index, table_name in enumerate(self.data.keys()):
+          model = AncestryChanceWidget(table_name, chance_values[index])
+          model.setObjectName(table_name+'Chance')
+          chance_layout.addWidget(model)
 
-        self.rareChanceLabel = QLabel("Rare Chance:")
-        self.rareChanceSpin = QDoubleSpinBox()
-        self.rareChanceSpin.setRange(0, 1)
-        self.rareChanceSpin.setSingleStep(0.01)
-        self.rareChanceSpin.setValue(0.05)
-        layout.addWidget(self.rareChanceLabel)
-        layout.addWidget(self.rareChanceSpin)
+        # add chances to the main layout
+        layout.addLayout(chance_layout)
 
         # Tables for editing ancestries and odds
-
         layoutAncTables = QHBoxLayout()
+        for table_name, table_rows in self.data.items():
+          headers = [table_name + ' Ancestry & Heritages', 'Odds']
+          model = AncestryTableWidget(headers, list(self.data[table_name].items()))
+          model.setObjectName(table_name+'Table')
+          layoutAncTables.addWidget(model)
 
-        self.commonTable = AncestryTableWidget(header_labels=["Common Ancestry and Heritage", "Odds"])
-        layoutAncTables.addWidget(self.commonTable)
-
-        self.uncommonTable = AncestryTableWidget(header_labels=["Uncommon Ancestry and Heritage", "Odds"])
-        layoutAncTables.addWidget(self.uncommonTable)
-
-        self.rareTable = AncestryTableWidget(header_labels=["Rare Ancestry and Heritage", "Odds"])
-
-        self.default_data()
-        self.commonTable.data_changed.connect(self.sync_data_from_tables())
-        self.uncommonTable.data_changed.connect(self.sync_data_from_tables())
-        self.rareTable.data_changed.connect(self.sync_data_from_tables())
-
-        layoutAncTables.addWidget(self.rareTable)
-
+        # add ancestry tables to the main layout
         layout.addLayout(layoutAncTables)
 
         # Generate Button
@@ -148,33 +165,61 @@ class PopulationDemographicsApp(QWidget):
         self.setLayout(layout)
         self.setWindowTitle("Population Generator")
 
-    def normalize_probabilities(self):
-        self.commonodds = self.normalize_list(self.commonodds)
-        self.uncommonodds = self.normalize_list(self.uncommonodds)
-        self.rareodds = self.normalize_list(self.rareodds)
-
     def normalize_list(self, odds_list):
         total = sum(odds_list)
         return [p / total for p in odds_list] if total > 0 else odds_list
 
-    def refresh_tables_from_data(self):
-      common_data = [[anc, str(int(odds))] for anc, odds in zip(self.commonancestry, self.commonodds)]
-      self.commonTable.set_data(common_data)
+    def refresh_tables_from_data(self, new_data):
+      tables = self.get_all_tables()
+      for table_name, table_data in new_data.items():
+        if table_name in tables:
+          table_rows = [[k, str(v)] for k, v in table_data.items()]
+          tables[table_name].set_data(table_rows)
 
-      uncommon_data = [[anc, str(int(odds))] for anc, odds in zip(self.uncommonancestry, self.uncommonodds)]
-      self.uncommonTable.set_data(uncommon_data)
+    def sync_data_from_tables(self):
+      tables = self.get_all_tables()
+      for table_name in tables.keys():
+        self.data[table_name] = self.get_table_data(tables[table_name])
 
-      rare_data = [[anc, str(int(odds))] for anc, odds in zip(self.rareancestry, self.rareodds)]
-      self.rareTable.set_data(rare_data)
+    def get_all_chances(self):
+      chances = {}
+      for table_name in self.data.keys():
+        chance = self.findChild(AncestryChanceWidget, f'{table_name}Chance').value()
+        chances[table_name] = chance
+      return chances
+
+    def get_all_tables(self):
+      tables = {}
+      for table_name in self.data.keys():
+        table = self.findChild(AncestryTableWidget, table_name+'Table')
+        if table:
+          tables[table_name] = table
+      return tables
+
+    def get_table_data(self, table):
+      ancestries = []
+      odds = []
+      for row in range(table.table.rowCount()):
+        name_item = table.table.item(row,0)
+        ancestry = name_item.text() if name_item else ""
+        odds_item = table.table.item(row,1)
+        try:
+          odd = int(float(odds_item.text())) if odds_item and odds_item and odds_item.text() else 1
+        except ValueError:
+          odd = 1
+
+        ancestries.append(ancestry)
+        odds.append(odd)
+
+      return dict(zip(ancestries, odds))
 
     def generate_population(self):
       self.sync_data_from_tables()
-      self.normalize_probabilities()
 
-        # pull over script!
-      vastmajority = False
+      # pull over script
+      #vastmajority = False
 
-      ndecimals = 0
+      ndecimals = int(self.ndecimals.value())
       if ndecimals > 0:
         scale = 10**(ndecimals)
         width = 3+ndecimals
@@ -182,53 +227,52 @@ class PopulationDemographicsApp(QWidget):
         scale = 1
         width = 2
 
-      commonchance = 0.7
-      uncommonchance = self.uncommonChanceSpin.value()
-      rarechance = self.rareChanceSpin.value()
+      chances = self.get_all_chances()
+      chance_sum = 0
+      for chance in chances.values():
+        chance_sum += chance
+        # the following shouldn't happen since the max value is 0.99
+        if chance == 1:
+          self.resultText.setText('No chance can be 1')
+          return
 
-      ncmax = np.count_nonzero(self.commonodds)
-      nucmax = np.count_nonzero(self.uncommonodds)
-      nrmax = np.count_nonzero(self.rareodds)
+      nmax = {}
+      for rarity, ancestries in self.data.items():
+        nmax[rarity] = np.count_nonzero(list(ancestries.values()))
+
       maxiterations = 0
+      n = {}
+      if(chance_sum > 0):
+        while(maxiterations<1):
+          for rarity, chance in chances.items():
+            n[rarity] = min(nmax[rarity], np.random.geometric(1-chance)-1)
 
-      while(maxiterations<1):
-        if(ncmax>1):
-          nc = int(np.around(np.random.triangular(0,2,ncmax)))
-          if(nc==1):
-            nc = np.random.randint(0,3)
-        elif(ncmax==1):
-          nc = int(np.around(np.random.triangular(0,1,ncmax)))
-        else:
-          nc = ncmax
+          maxiterations = np.sum(list(n.values()))
 
-        nuc = min(nucmax, np.random.geometric(1-uncommonchance)-1)
-        nr = min(nrmax, np.random.geometric(1-rarechance)-1)
+      else:
+        self.resultText.setText('At least one chance must be non-zero.')
+        return
 
-        maxiterations = nc + nuc + nr
+      # convert x_chance to a y_scale for skewnorm
+      # y_scale = -27.2343 * tan( 1.4076 * (x_chance - 0.5) )
+      # loc = x_chance
+      choice = np.array([])
+      dist = np.array([])
+      for rarity, chance in chances.items():
+        skew_scale = np.around(27.2343*np.tan(-1.4076*(chance - 0.5)))
+        sum_odds = np.sum(list(self.data[rarity].values()))
+        choice = np.append(choice, np.random.choice(list(self.data[rarity].keys()), n[rarity], replace=False, p=list(self.data[rarity].values())/sum_odds))
+        dist = np.append(dist, skewnorm.rvs(skew_scale, loc=chance, scale=0.20, size=n[rarity]))
 
-      uncommonscale = np.around(27.2343*np.tan(-1.4076*uncommonchance+0.703801),1)
-      rarescale = np.around(27.2343*np.tan(-1.4076*rarechance+0.703801),1)
-      common_dist = skewnorm.rvs(0, loc=0.5, scale=0.20, size = nc)
-      common_choice = np.random.choice(self.commonancestry, nc, replace=False, p=self.commonodds)
-      uncommon_dist = skewnorm.rvs(uncommonscale, loc=uncommonchance, scale=0.20, size = nuc)
-      uncommon_choice = np.random.choice(self.uncommonancestry, nuc, replace=False, p=self.uncommonodds)
-      rare_dist = skewnorm.rvs(rarescale, loc=rarechance, scale=0.20, size = nr)
-      rare_choice = np.random.choice(self.rareancestry, nr, replace=False, p=self.rareodds)
-
-      dist = np.append(common_dist, uncommon_dist)
-      dist = np.append(dist, rare_dist)
-      choice = np.append(common_choice, uncommon_choice)
-      choice = np.append(choice, rare_choice)
       sort_idx = np.argsort(dist)[::-1]
       dist = dist[sort_idx]
       choice = choice[sort_idx]
 
       if(maxiterations>1):
         tol = 2 * scale # tolerance, when remainder is less than end simulation
-
         remainder = 100 * scale
 
-        if(vastmajority):
+        if(self.vastMajority):
           mode = 75
           rng = int(scale * np.random.triangular(61, mode, 90))
         else:
@@ -247,7 +291,8 @@ class PopulationDemographicsApp(QWidget):
           iterations += 1
 
         popdemo = np.sort(popdemo)[::-1]
-        other_cap = min((ncmax+nucmax+nrmax)//3, np.random.randint(7,15))
+        nsum = sum(list(nmax.values()))
+        other_cap = min(nsum//3, np.random.randint(7,15))
         other_cap *= scale
         other_diff = remainder - other_cap
 
@@ -275,72 +320,100 @@ class PopulationDemographicsApp(QWidget):
           popdemo = np.round(popdemo / scale, ndecimals)
 
 
-        output_text = 'Generated population: %d common, %d uncommon, and %d rare ancestries\n' % (nc, nuc, nr)
+        output_text = 'Generated population: '
+        nrange = np.size(list(n.values()))
+        for j, (rarity, val) in enumerate(n.items()):
+          if j < nrange-1:
+            output_text += f'{val} {rarity}, '
+          else:
+            output_text += f'and {val} {rarity}\n'
         choice = np.append(choice,'other')
         for val, anc in zip(popdemo, choice):
           output_text += f'{val:{width}}' + '%: ' + anc + '\n'
 
       else:
-        output_text = 'Generated population: %d common, %d uncommon, and %d rare ancestries\n' % (nc, nuc, nr)
+        output_text = 'Generated population: '
+        nrange = np.size(list(n.values()))
+        for j, (rarity, val) in enumerate(n.items()):
+          if j < nrange-1:
+            output_text += f'{val} {rarity}, '
+          else:
+            output_text += f'and {val} {rarity}\n'
         output_text += f'99%: {choice[0]}\n'
         output_text += ' 1%: other'
 
       self.resultText.setText(output_text)
 
-    def sync_data_from_tables(self):
-      self.commonancestry, self.commonodds = self.get_table_data(self.commonTable)
-      self.uncommonancestry, self.uncommonodds = self.get_table_data(self.uncommonTable)
-      self.rareancestry, self.rareodds = self.get_table_data(self.rareTable)
-      #self.normalize_probabilities()
-
-    def get_table_data(self, table):
-      ancestries = []
-      odds = []
-      for row in range(table.table.rowCount()):
-        name_item = table.table.item(row,0)
-        ancestry = name_item.text() if name_item else ""
-        odds_item = table.table.item(row,1)
-        try:
-          odd = int(float(odds_item.text())) if odds_item and odds_item and odds_item.text() else 1
-        except ValueError:
-          odd = 1
-
-        ancestries.append(ancestry)
-        odds.append(odd)
-
-      return ancestries, odds
-
     def default_data(self):
-      self.commonancestry = ['dwarf', 'elf', 'gnome', 'goblin', 'halfling',
-                             'human', 'leshy', 'orc', 'auivarian (half-elf)', 'dromaar (half-orc)']
-      self.commonodds = [1, 1, 1, 1, 1,
-                         1, 1, 1, 1, 1]
+      self.data = {
+        "Common": {
+          "dwarf": 1,
+          "elf": 1,
+          "gnome": 1,
+          "goblin": 1,
+          "halfling": 1,
+          "human": 1,
+          "leshy": 1,
+          "orc": 1,
+          "auivarian (half-elf)": 1,
+          "dromaar (half-orc)": 1
+        },
 
-      self.uncommonancestry = ['athamaru', 'azarketi', 'catfolk', 'centaur', 'changeling',
-                               'geniekin', 'dhampir', 'dragonblood', 'duskwalker', 'fetchling',
-                               'hobgoblin', 'kholo', 'kitsune', 'kobold', 'lizardfolk',
-                               'merfolk', 'minotaur', 'mixed ancestry', 'nagaji', 'nephilim',
-                               'ratfolk', 'samsaran', 'tanuki', 'tengu', 'tripkee',
-                               'vanara', 'wayang']
-      self.uncommonodds = [1, 1, 1, 1, 1,
-                           1, 1, 1, 1, 1,
-                           1, 1, 1, 1, 1,
-                           1, 1, 1, 1, 1,
-                           1, 1, 1, 1, 1,
-                           1, 1]
+        "Uncommon": {
+          "athamaru": 1,
+          "azarketi": 1,
+          "catfolk": 1,
+          "centaur": 1,
+          "changeling": 1,
+          "geniekin": 1,
+          "dhampir": 1,
+          "dragonblood": 1,
+          "duskwalker": 1,
+          "fetchling": 1,
+          "hobgoblin": 1,
+          "kholo": 1,
+          "kitsune": 1,
+          "kobold": 1,
+          "lizardfolk": 1,
+          "merfolk": 1,
+          "minotaur": 1,
+          "mixed ancestry": 1,
+          "nagaji": 1,
+          "nephilim": 1,
+          "ratfolk": 1,
+          "samsaran": 1,
+          "tanuki": 1,
+          "tengu": 1,
+          "tripkee": 1,
+          "vanara": 1,
+          "wayang": 1
+        },
 
-      self.rareancestry = ['anadi', 'android', 'automaton', 'awakened animal', 'beastkin',
-                           'conrasu', 'fleshwarp', 'ghoran', 'goloma', 'kashrishi',
-                           'poppet', 'reflection', 'sarangay', 'shisk', 'shoony',
-                           'skeleton (undead)', 'sprite', 'strix', 'surki', 'vishkanya',
-                           'yaksha', 'yaoguai']
-      self.rareodds = [1, 1, 1, 1, 1,
-                       1, 1, 1, 1, 1,
-                       1, 1, 1, 1, 1,
-                       1, 1, 1, 1, 1,
-                       1, 1]
-
-      self.refresh_tables_from_data()
+        "Rare": {
+          "anadi": 1,
+          "android": 1,
+          "automaton": 1,
+          "awakened animal": 1,
+          "beastkin": 1,
+          "conrasu": 1,
+          "fleshwarp": 1,
+          "ghoran": 1,
+          "goloma": 1,
+          "kashrishi": 1,
+          "poppet": 1,
+          "reflection": 1,
+          "sarangay": 1,
+          "shisk": 1,
+          "shoony": 1,
+          "skeleton (undead)": 1,
+          "sprite": 1,
+          "strix": 1,
+          "surki": 1,
+          "vishkanya": 1,
+          "yaksha": 1,
+          "yaoguai": 1
+        }
+      }
 
     def load_from_file(self):
       filepath, _ = QFileDialog.getOpenFileName(self)
@@ -352,16 +425,7 @@ class PopulationDemographicsApp(QWidget):
         with open(filepath, 'r') as f:
           data = json.load(f)
 
-        self.commonancestry = list(data.get('common', {}).keys())
-        self.commonodds = list(data.get('common', {}).values())
-
-        self.uncommonancestry = list(data.get('uncommon', {}).keys())
-        self.uncommonodds = list(data.get('uncommon', {}).values())
-
-        self.rareancestry = list(data.get('rare', {}).keys())
-        self.rareodds = list(data.get('rare', {}).values())
-
-        self.refresh_tables_from_data()
+        self.refresh_tables_from_data(data)
         self.resultText.setText("Population data loaded successfully!")
 
       except Exception as e:
@@ -378,15 +442,9 @@ class PopulationDemographicsApp(QWidget):
       if not filepath.lower().endswith('.json'):
         filepath += '.json'
 
-      data = {
-          "common": dict(zip(self.commonancestry, self.commonodds)),
-          "uncommon": dict(zip(self.uncommonancestry, self.uncommonodds)),
-          "rare": dict(zip(self.rareancestry, self.rareodds))
-          }
-
       try:
         with open(filepath, 'w') as f:
-          json.dump(data, f, indent=4)
+          json.dump(self.data, f, indent=2)
         self.resultText.setText("Population data saved successfully!")
 
       except Exception as e:

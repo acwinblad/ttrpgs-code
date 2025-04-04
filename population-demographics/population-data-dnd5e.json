@@ -1,5 +1,5 @@
 {
-  "common": {
+  "Common": {
     "dragonborn": 1,
     "dwarf": 1,
     "elf": 1,
@@ -10,7 +10,7 @@
     "human": 1,
     "tiefling": 1
   },
-  "uncommon": {
+  "Uncommon": {
     "aarakocra": 1,
     "aasimar": 1,
     "changeling": 1,
@@ -25,7 +25,7 @@
     "orc": 1,
     "tabaxi": 1
   },
-  "rare": {
+  "Rare": {
     "bugbear": 1,
     "centaur": 1,
     "firbolg": 1,
