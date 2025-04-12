@@ -26,7 +26,7 @@ commonodds /= np.sum(commonodds)
 uncommonodds /= np.sum(uncommonodds)
 rareodds /= np.sum(rareodds)
 
-vastmajority = True
+vastmajority = False
 
 ndecimals = 0
 if ndecimals > 0:
@@ -46,7 +46,7 @@ nrmax = np.count_nonzero(rareodds)
 maxiterations = 0
 
 while(maxiterations<1):
-  nc = int(np.around(np.random.triangular(0,2,ncmax)))
+  nc = min(ncmax, np.random.geometric(1-commonchance)-1)
   nuc = min(nucmax, np.random.geometric(1-uncommonchance)-1)
   nr = min(nrmax, np.random.geometric(1-rarechance)-1)
   if(nc==1):
@@ -54,9 +54,10 @@ while(maxiterations<1):
 
   maxiterations = nc + nuc + nr
 
-uncommonscale = np.around(27.2343*np.tan(-1.4076*uncommonchance+0.703801),1)
-rarescale = np.around(27.2343*np.tan(-1.4076*rarechance+0.703801),1)
-common_dist = skewnorm.rvs(0, loc=0.5, scale=0.20, size = nc)
+commonscale = np.around(27.2343*np.tan(-1.4076*(commonchance-0.5)))
+uncommonscale = np.around(27.2343*np.tan(-1.4076*(uncommonchance-0.5)))
+rarescale = np.around(27.2343*np.tan(-1.4076*(rarechance-0.5)))
+common_dist = skewnorm.rvs(commonscale, loc=commonchance, scale=0.20, size = nc)
 common_choice = np.random.choice(commonancestry, nc, replace=False, p=commonodds)
 uncommon_dist = skewnorm.rvs(uncommonscale, loc=uncommonchance, scale=0.20, size = nuc)
 uncommon_choice = np.random.choice(uncommonancestry, nuc, replace=False, p=uncommonodds)
