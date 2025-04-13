@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 import numpy as np
-from scipy.stats import skewnorm
+from scipy.stats import skewnorm, poisson
 import json
 
 filepath = './population-data-zorus.json'
@@ -9,22 +9,18 @@ try:
   with open(filepath, 'r') as f:
     data = json.load(f)
 
-  commonancestry = list(data.get('common', {}).keys())
-  commonodds = list(data.get('common', {}).values())
+  commonancestry = list(data.get('Common', {}).keys())
+  commonodds = list(data.get('Common', {}).values())
 
-  uncommonancestry = list(data.get('uncommon', {}).keys())
-  uncommonodds = list(data.get('uncommon', {}).values())
+  uncommonancestry = list(data.get('Uncommon', {}).keys())
+  uncommonodds = list(data.get('Uncommon', {}).values())
 
-  rareancestry = list(data.get('rare', {}).keys())
-  rareodds = list(data.get('rare', {}).values())
+  rareancestry = list(data.get('Rare', {}).keys())
+  rareodds = list(data.get('Rare', {}).values())
   print('Population data loaded successfully!')
 
 except Exception as e:
   print(f'Error loading file: {str(e)}')
-
-commonodds /= np.sum(commonodds)
-uncommonodds /= np.sum(uncommonodds)
-rareodds /= np.sum(rareodds)
 
 vastmajority = False
 
@@ -43,15 +39,20 @@ rarechance = 0.05
 ncmax = np.count_nonzero(commonodds)
 nucmax = np.count_nonzero(uncommonodds)
 nrmax = np.count_nonzero(rareodds)
+
+commonodds /= np.sum(commonodds)
+uncommonodds /= np.sum(uncommonodds)
+rareodds /= np.sum(rareodds)
+
 maxiterations = 0
 
 while(maxiterations<1):
-  nc = min(ncmax, np.random.geometric(1-commonchance)-1)
-  nuc = min(nucmax, np.random.geometric(1-uncommonchance)-1)
-  nr = min(nrmax, np.random.geometric(1-rarechance)-1)
-  if(nc==1):
-    nc = np.random.randint(0,3)
-
+  #nc = min(ncmax, np.random.geometric(1-commonchance)-1)
+  #nuc = min(nucmax, np.random.geometric(1-uncommonchance)-1)
+  #nr = min(nrmax, np.random.geometric(1-rarechance)-1)
+  nc = min(ncmax,   poisson.rvs(0.25+2*commonchance))
+  nuc = min(nucmax, poisson.rvs(0.25+2*uncommonchance))
+  nr = min(nrmax,   poisson.rvs(0.25+2*rarechance))
   maxiterations = nc + nuc + nr
 
 commonscale = np.around(27.2343*np.tan(-1.4076*(commonchance-0.5)))

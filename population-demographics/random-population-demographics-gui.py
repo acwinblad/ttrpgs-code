@@ -1,7 +1,7 @@
 import sys
 import json
 import numpy as np
-from scipy.stats import skewnorm
+from scipy.stats import skewnorm, poisson
 from PySide6.QtCore import Signal, QAbstractTableModel
 from PySide6.QtWidgets import QApplication, QCheckBox, QWidget, QVBoxLayout, QPushButton, QLabel, QTextEdit, QDoubleSpinBox, QTableWidget, QTableWidgetItem, QHBoxLayout, QHeaderView, QFileDialog
 
@@ -242,10 +242,12 @@ class PopulationDemographicsApp(QWidget):
 
       maxiterations = 0
       n = {}
+      #nrarity = np.size(list(self.data.keys()))
       if(chance_sum > 0):
         while(maxiterations<1):
-          for rarity, chance in chances.items():
-            n[rarity] = min(nmax[rarity], np.random.geometric(1-chance)-1)
+          for j, (rarity, chance) in enumerate(chances.items()):
+            #n[rarity] = min(nmax[rarity], np.random.geometric(1-chance)-1)
+            n[rarity] = min(nmax[rarity], poisson.rvs(0.25+2**chance))
 
           maxiterations = np.sum(list(n.values()))
 
