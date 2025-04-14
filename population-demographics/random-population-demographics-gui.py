@@ -274,12 +274,14 @@ class PopulationDemographicsApp(QWidget):
         tol = 2 * scale # tolerance, when remainder is less than end simulation
         remainder = 100 * scale
 
-        if(self.vastMajority):
+        if(self.vastMajority.isChecked()):
           mode = 75
           rng = int(scale * np.random.triangular(61, mode, 90))
+          rng = int(scale * np.random.randint(60,91))
         else:
-          mode = 25 * scale
-          rng = int(scale * np.random.triangular(1, mode, 50))
+          mode = 35
+          rng = int(scale * np.random.triangular(11, mode, 60))
+          rng = int(scale * np.random.randint(10, 61))
         # population demographic
         popdemo = np.array([rng], dtype='int')
         remainder -= rng
@@ -287,6 +289,7 @@ class PopulationDemographicsApp(QWidget):
         iterations = 1
         while(remainder >= tol and iterations < maxiterations):
           rng = int(np.random.triangular(1 * scale,remainder//2,remainder))
+          rng = int(np.random.randint(1 * scale,remainder+1))
 
           popdemo = np.append(popdemo, rng)
           remainder -= rng

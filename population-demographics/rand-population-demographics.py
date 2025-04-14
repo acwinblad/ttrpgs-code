@@ -82,7 +82,7 @@ if(maxiterations>1):
     mode = 75
     rng = int(scale * np.random.triangular(61, mode, 90))
   else:
-    mode = 25 * scale
+    mode = 25
     rng = int(scale * np.random.triangular(1, mode, 50))
   # population demographic
   popdemo = np.array([rng], dtype='int')
