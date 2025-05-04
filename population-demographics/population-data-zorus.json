@@ -6,10 +6,10 @@
     "goblin": 1,
     "halfling": 4,
     "human": 10,
-    "leshy": 1,
     "orc": 4,
     "auivarian (half-elf)": 5,
-    "dromaar (half-orc)": 3
+    "dromaar (half-orc)": 3,
+    "mixed ancestry": 2
   },
   "Uncommon": {
     "athamaru": 0,
@@ -29,7 +29,7 @@
     "lizardfolk": 5,
     "merfolk": 1,
     "minotaur": 1,
-    "mixed ancestry": 4,
+    "leshy": 4,
     "nagaji": 1,
     "nephilim": 4,
     "ratfolk": 2,
